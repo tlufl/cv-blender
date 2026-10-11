@@ -11,3 +11,7 @@ venv/
 env/
 
 .vscode/
+
+.env
+
+data/

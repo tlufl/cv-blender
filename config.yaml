@@ -1,0 +1,9 @@
+camera:
+  baseline: 30.0
+  focal_length_mm: 50.0
+  sensor_width_mm: 36.0
+
+video:
+  resulution: [768, 576]
+  fps: 25
+

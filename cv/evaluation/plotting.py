@@ -26,31 +26,35 @@ def plot_3d_trail(axes_3d: Axes3D, data: TrajectoryData) -> None:
     axes_3d.set_xlabel("X")
     axes_3d.set_ylabel("Y")
     axes_3d.set_zlabel("Z")
-    axes_3d.set_zlim(-0.3, 0.3)
-    axes_3d.set_ylim(-0.3, 0.3)
     axes_3d.legend()
 
 
 def plot_error_graphs(
-    axes: list[Axes], data: TrajectoryData, errors: TrajectoryErrors
+    axes: list[Axes],
+    data: TrajectoryData,
+    errors: TrajectoryErrors,
+    color="r",
+    point_size=5,
+    alpha=0.5,
 ) -> None:
+    style = {"c": color, "s": point_size, "alpha": alpha}
     ax_dist, ax_x, ax_y, ax_z = axes
 
-    ax_dist.plot(data.true_distance, errors.distance)
+    ax_dist.scatter(data.true_distance, errors.distance, **style)
     ax_dist.set_title("Errors")
     ax_dist.set_ylabel("Distance error")
     ax_dist.set_xlabel("Distance")
     ax_dist.set_ylim(-4, 4)
 
-    ax_x.plot(data.true_distance, errors.x)
+    ax_x.scatter(data.true_distance, errors.x, **style)
     ax_x.set_ylabel("X error")
     ax_x.set_ylim(-4, 4)
 
-    ax_y.plot(data.true_distance, errors.y)
+    ax_y.scatter(data.true_distance, errors.y, **style)
     ax_y.set_ylabel("Y error")
     ax_y.set_ylim(-4, 4)
 
-    ax_z.plot(data.true_distance, errors.z)
+    ax_z.scatter(data.true_distance, errors.z, **style)
     ax_z.set_ylabel("Z error")
     ax_z.set_xlabel("Distance")
     ax_z.set_ylim(-4, 4)

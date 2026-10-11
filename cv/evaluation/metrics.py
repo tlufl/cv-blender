@@ -10,8 +10,6 @@ def calculate_metrics(
     true_arr = true_arr[:min_len]
     proc_arr = proc_arr[:min_len].copy()
 
-    proc_arr[:, 1] -= 15.0
-
     true_distance = np.linalg.norm(true_arr, axis=1)
     proc_distance = np.linalg.norm(proc_arr, axis=1)
 

@@ -1,33 +1,29 @@
-from typing import Final
-
+from config import config
 from cv.core.engine import Engine
 from cv.core.pipeline import Pipeline
-from cv.evaluation.flows import analize
+from cv.evaluation.flows import analize, analize_two_objects
 from cv.geometry.triangulator import create_triangulator
 from cv.io.csv_result_handler import CSVResultHandler
+from cv.io.console_handler import ConsoleResultHandler
 from cv.io.video_source import VideoSource
+from cv.io.image_source import ImageSource
 from cv.processing.frame_processor import process_frame
-from cv.processing.metadata_merger import dont_merge_metadata
-
-LEFT_CAMERA_SOURCE_PAHT: Final[str] = "./left_camera_25fps.mp4"
-RIGHT_CAMERA_SOURCE_PAHT: Final[str] = "./right_camera_25fps.mp4"
-TRUE_DATA_PATH: Final[str] = "coords.csv"
-PROCESSED_DATA_PATH: Final[str] = "fake_coords.csv"
-OUTPUT_METRICS_PATH: Final[str] = "analize.png"
-
-BASELINE: Final[float] = 30.0
-F_MM: Final[float] = 50.0
-W_MM: Final[float] = 36.0
-
+from cv.processing.metadata_merger import dont_merge_metadata, MetaDataMerger
 
 if __name__ == "__main__":
-    triangulate = create_triangulator(f_mm=F_MM, w_mm=W_MM, baseline=BASELINE)
-    frame_reader = VideoSource(LEFT_CAMERA_SOURCE_PAHT, RIGHT_CAMERA_SOURCE_PAHT)
-    engine = Engine(process_frame, dont_merge_metadata, triangulate)
-
-    res_handler = CSVResultHandler(PROCESSED_DATA_PATH)
+    triangulate = create_triangulator(
+        f_mm=config.camera.focal_length_mm,
+        w_mm=config.camera.sensor_width_mm,
+        baseline=config.camera.baseline,
+    )
+    frame_reader = VideoSource(
+        config.path.left_camera_src, config.path.right_camera_src
+    )
+    merger = MetaDataMerger()
+    engine = Engine(process_frame, merger.merge_metadata, triangulate)
+    res_handler = CSVResultHandler(config.path.proc_data)
     with res_handler:
         pipeline = Pipeline(engine, frame_reader, res_handler)
         pipeline.start()
 
-    analize(TRUE_DATA_PATH, PROCESSED_DATA_PATH, OUTPUT_METRICS_PATH)
+    analize(config.path.true_data, config.path.proc_data, config.path.output_metrics)

@@ -12,7 +12,7 @@ class CSVResultHandler:
     def open(self) -> None:
         self._file = open(self.file_path, mode="w", newline="", encoding="utf-8")
         self._writer = csv.writer(self._file)
-        self._writer.writerow(["X", "Y", "Z"])
+        self._writer.writerow(["Frame_id", "Object_id", "X", "Y", "Z"])
 
     def handle(self, world_context: WorldContext) -> None:
         if self._writer is None:
@@ -21,11 +21,17 @@ class CSVResultHandler:
         if world_context.positions.size == 0:
             return
 
-        for position in world_context.positions:
+        frame_id = world_context.frame_id
+        for obj_id, position in zip(world_context.object_ids, world_context.positions):
             x, y, z = position
-            self._writer.writerow(
-                [round(float(x), 4), round(float(y), 4), round(float(z), 4)]
-            )
+            row = [
+                frame_id,
+                obj_id,
+                round(float(x), 4),
+                round(float(y), 4),
+                round(float(z), 4),
+            ]
+            self._writer.writerow(row)
 
     def close(self) -> None:
         if self._file:

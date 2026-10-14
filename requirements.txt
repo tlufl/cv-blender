@@ -1,6 +1,10 @@
+certifi==2026.7.22
+charset-normalizer==3.5.2
 contourpy==1.4.0
 cycler==0.12.1
+dotenv==0.9.9
 fonttools==4.66.0
+idna==3.20
 kiwisolver==1.5.1
 matplotlib==3.11.2
 numpy==2.5.3
@@ -10,5 +14,10 @@ pandas==3.0.6
 pillow==12.3.0
 pyparsing==3.3.3
 python-dateutil==2.9.0.post0
+python-dotenv==1.2.3
+PyYAML==6.0.3
+requests==2.34.2
 ruff==0.16.9
+scipy==1.18.1
 six==1.17.0
+urllib3==2.8.0

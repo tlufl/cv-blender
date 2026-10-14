@@ -1,38 +1,43 @@
-from dataclasses import dataclass
-from typing import Protocol
-
-from cv.core.engine import Engine
-from cv.core.frame_data import FrameContext
-from cv.core.world_data import WorldContext
+from dataclasses import dataclass, field
+from typing import Protocol, Any, Self, List, Tuple
 
 
-class StereoSource(Protocol):
-    def read_stereo_pair(self) -> tuple[FrameContext, FrameContext] | None:
-        pass
-
-
-class ResultHandler(Protocol):
-    def handle(self, world_context: WorldContext) -> None:
+class ProcessingNode(Protocol):
+    def process(self, *args, **kwargs) -> Any:
         pass
 
 
 @dataclass
 class Pipeline:
-    engine: Engine
-    source: StereoSource
-    result_handler: ResultHandler
-    is_running: bool = False
+    _nodes: List[ProcessingNode] = field(default_factory=list)
+    _endpoint: ProcessingNode | None = None
 
-    def start(self):
-        self.is_running = True
-        while self.is_running:
-            stereo_pair = self.source.read_stereo_pair()
+    def set_endpoint(self) -> Self:
+        if self._nodes:
+            self._endpoint = self._nodes[-1]
+        return self
 
-            if stereo_pair is None:
-                self.is_running = False
-                break
+    def add(self, node: ProcessingNode) -> Self:
+        self._nodes.append(node)
+        return self
 
-            ctx_left, ctx_right = stereo_pair
-            world_ctx: WorldContext = self.engine.process(ctx_left, ctx_right)
+    def __rshift__(self, node: ProcessingNode) -> Self:
+        return self.add(node)
 
-            self.result_handler.handle(world_ctx)
+    def run(self, *args) -> None:
+        if not self._nodes:
+            return
+
+        data = tuple()
+
+        while True:
+            for node in self._nodes:
+                data = node.process(*data)
+
+                if self._endpoint and node is self._endpoint and data is None:
+                    return
+
+                if data is None:
+                    data = tuple()
+                elif not isinstance(data, Tuple):
+                    data = (data,)

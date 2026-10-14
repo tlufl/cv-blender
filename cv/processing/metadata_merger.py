@@ -1,14 +1,8 @@
-from cv.core.frame_data import FrameContext
+from cv.core.frame_data import FrameMetaData
 
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 from dataclasses import dataclass
-
-
-def dont_merge_metadata(
-    context1: FrameContext, context2: FrameContext
-) -> tuple[FrameContext, FrameContext]:
-    return context1, context2
 
 
 def rectangular_assignment(
@@ -98,7 +92,7 @@ class CompareResult:
     unmatched_right: np.ndarray
 
 
-class MetaDataMerger:
+class MergeMetaDataNode:
     def __init__(self):
         self.max_missed_frames = 10
         self._next_id: int = 0
@@ -107,17 +101,18 @@ class MetaDataMerger:
         self._track_ids: np.ndarray = np.array([])
         self._track_missed = np.empty([])
 
-    def merge_metadata(
-        self, context1: FrameContext, context2: FrameContext
-    ) -> tuple[FrameContext, FrameContext]:
-        cmp_result = self._compare_steriopairs(context1, context2)
-        return self._track_steriopairs(context1, context2, cmp_result)
+    def process(
+        self, metadata1: FrameMetaData, metadata2: FrameMetaData
+    ) -> tuple[FrameMetaData, FrameMetaData]:
+        print("process Metadata")
+        cmp_result = self._compare_steriopairs(metadata1, metadata2)
+        return self._track_steriopairs(metadata1, metadata2, cmp_result)
 
     def _compare_steriopairs(
-        self, context1: FrameContext, context2: FrameContext
+        self, metadata1: FrameMetaData, metadata2: FrameMetaData
     ) -> CompareResult:
-        left_centers = context1.metadata.bboxes[:, :2]
-        right_centers = context2.metadata.bboxes[:, :2]
+        left_centers = metadata1.bboxes[:, :2]
+        right_centers = metadata2.bboxes[:, :2]
 
         matrix = create_distance_matrix(left_centers, right_centers, 0.1)
         left_idx, right_idx, unmatched_left, unmatched_right = rectangular_assignment(
@@ -126,27 +121,28 @@ class MetaDataMerger:
         return CompareResult(left_idx, right_idx, unmatched_left, unmatched_right)
 
     def _track_steriopairs(
-        self, context1: FrameContext, context2: FrameContext, cmp_result: CompareResult
-    ) -> tuple[FrameContext, FrameContext]:
-        left_bboxes = context1.metadata.bboxes[cmp_result.matched_left]
-        right_bboxes = context2.metadata.bboxes[cmp_result.matched_right]
+        self,
+        metadata1: FrameMetaData,
+        metadata2: FrameMetaData,
+        cmp_result: CompareResult,
+    ) -> tuple[FrameMetaData, FrameMetaData]:
+        left_bboxes = metadata1.bboxes[cmp_result.matched_left]
+        right_bboxes = metadata2.bboxes[cmp_result.matched_right]
 
         if not self._left_tracks.size:
             self._left_tracks = left_bboxes
-            self._track_ids = context1.metadata.object_ids
+            self._track_ids = metadata1.object_ids
 
         iou = create_iou_matrix(self._left_tracks, left_bboxes)
 
         tid, cid, *_ = rectangular_assignment(iou)
 
-        context1.metadata.bboxes = left_bboxes[cid]
-        context2.metadata.bboxes = right_bboxes[cid]
-        context1.metadata.object_ids = context2.metadata.object_ids = self._track_ids[
-            tid
-        ]
+        metadata1.bboxes = left_bboxes[cid]
+        metadata2.bboxes = right_bboxes[cid]
+        metadata1.object_ids = metadata2.object_ids = self._track_ids[tid]
 
-        self._left_tracks = context1.metadata.bboxes
-        self._right_tracks = context2.metadata.bboxes
-        self._track_ids = context1.metadata.object_ids
+        self._left_tracks = metadata1.bboxes
+        self._right_tracks = metadata2.bboxes
+        self._track_ids = metadata1.object_ids
 
-        return context1, context2
+        return metadata1, metadata2

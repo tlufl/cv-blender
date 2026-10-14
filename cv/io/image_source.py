@@ -3,13 +3,13 @@ import cv2
 from cv.core.frame_data import FrameContext
 
 
-class ImageSource:
+class ImageSourceNode:
     def __init__(self, left_image_path: str, right_image_path: str):
         self.left_image_path = left_image_path
         self.right_image_path = right_image_path
         self.close = False
 
-    def read_stereo_pair(self) -> tuple[FrameContext, FrameContext] | None:
+    def process(self) -> tuple[FrameContext, FrameContext] | None:
         frame_l = cv2.imread(self.left_image_path, cv2.IMREAD_COLOR_BGR)
         frame_r = cv2.imread(self.right_image_path, cv2.IMREAD_COLOR_BGR)
 

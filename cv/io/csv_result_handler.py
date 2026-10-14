@@ -3,7 +3,7 @@ import csv
 from cv.core.world_data import WorldContext
 
 
-class CSVResultHandler:
+class CSVResultHandlerNode:
     def __init__(self, file_path: str):
         self.file_path = file_path
         self._file = None
@@ -14,7 +14,8 @@ class CSVResultHandler:
         self._writer = csv.writer(self._file)
         self._writer.writerow(["Frame_id", "Object_id", "X", "Y", "Z"])
 
-    def handle(self, world_context: WorldContext) -> None:
+    def process(self, world_context: WorldContext) -> None:
+        print("process CSV")
         if self._writer is None:
             raise RuntimeError()
 

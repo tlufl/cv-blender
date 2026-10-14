@@ -3,13 +3,14 @@ import cv2
 from cv.core.frame_data import FrameContext
 
 
-class VideoSource:
+class VideoSourceNode:
     def __init__(self, left_video_path: str, right_video_path: str):
         self.cap_left = cv2.VideoCapture(left_video_path)
         self.cap_right = cv2.VideoCapture(right_video_path)
         self._frame_id = 0
 
-    def read_stereo_pair(self) -> tuple[FrameContext, FrameContext] | None:
+    def process(self) -> tuple[FrameContext, FrameContext] | None:
+        print("process Video")
         ret_l, frame_l = self.cap_left.read()
         ret_r, frame_r = self.cap_right.read()
 

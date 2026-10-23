@@ -14,7 +14,6 @@ class TriangulateNode:
     def process(
         self, metadata1: FrameMetaData, metadata2: FrameMetaData
     ) -> WorldContext:
-        print("process Triangulator")
         world_ctx = WorldContext(
             frame_id=metadata1.frame_id, frame_res=metadata1.frame_res
         )

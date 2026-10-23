@@ -15,7 +15,6 @@ class ProcessFramesNode:
     def process(
         self, context1: FrameContext, context2: FrameContext
     ) -> Tuple[FrameMetaData, FrameMetaData]:
-        print("process Frame")
         metadata1 = self.process_frame(context1)
         metadata2 = self.process_frame(context2)
         return metadata1, metadata2

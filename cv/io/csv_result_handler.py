@@ -15,7 +15,6 @@ class CSVResultHandlerNode:
         self._writer.writerow(["Frame_id", "Object_id", "X", "Y", "Z"])
 
     def process(self, world_context: WorldContext) -> None:
-        print("process CSV")
         if self._writer is None:
             raise RuntimeError()
 

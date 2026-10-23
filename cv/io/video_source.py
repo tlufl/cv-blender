@@ -10,15 +10,15 @@ class VideoSourceNode:
         self._frame_id = 0
 
     def process(self) -> tuple[FrameContext, FrameContext] | None:
-        print("process Video")
         ret_l, frame_l = self.cap_left.read()
         ret_r, frame_r = self.cap_right.read()
 
         if not ret_l or not ret_r:
             self.release()
             return None
-        sterio_pair = FrameContext(frame_l, self._frame_id), FrameContext(
-            frame_r, self._frame_id
+        sterio_pair = (
+            FrameContext(frame_l, self._frame_id),
+            FrameContext(frame_r, self._frame_id),
         )
         self._frame_id += 1
 

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Protocol, Any, Self, List, Tuple
+from typing import Any, Protocol, Self
 
 
 class ProcessingNode(Protocol):
@@ -9,7 +9,7 @@ class ProcessingNode(Protocol):
 
 @dataclass
 class Pipeline:
-    _nodes: List[ProcessingNode] = field(default_factory=list)
+    _nodes: list[ProcessingNode] = field(default_factory=list)
     _endpoint: ProcessingNode | None = None
 
     def set_endpoint(self) -> Self:
@@ -39,5 +39,5 @@ class Pipeline:
 
                 if data is None:
                     data = tuple()
-                elif not isinstance(data, Tuple):
+                elif not isinstance(data, tuple):
                     data = (data,)

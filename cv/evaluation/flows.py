@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 from cv.evaluation.metrics import calculate_metrics
 from cv.evaluation.plotting import plot_3d_trail, plot_error_graphs

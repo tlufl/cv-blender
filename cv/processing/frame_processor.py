@@ -1,7 +1,8 @@
+from collections.abc import Callable
+from dataclasses import dataclass
+
 import cv2
 import numpy as np
-from typing import Tuple, Callable
-from dataclasses import dataclass
 
 from cv.core.frame_data import FrameContext, FrameMetaData
 
@@ -14,7 +15,7 @@ class ProcessFramesNode:
 
     def process(
         self, context1: FrameContext, context2: FrameContext
-    ) -> Tuple[FrameMetaData, FrameMetaData]:
+    ) -> tuple[FrameMetaData, FrameMetaData]:
         metadata1 = self.process_frame(context1)
         metadata2 = self.process_frame(context2)
         return metadata1, metadata2

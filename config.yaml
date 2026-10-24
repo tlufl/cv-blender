@@ -7,3 +7,9 @@ video:
   resulution: [768, 576]
   fps: 25
 
+stereo_compare:
+  max_distance: 0.8
+  epipolar_threshold: 1e-2
+
+time_tracking:
+  min_iou: 0.1

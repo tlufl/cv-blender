@@ -1,5 +1,6 @@
-import numpy as np
 from dataclasses import dataclass
+
+import numpy as np
 
 from cv.core.frame_data import FrameMetaData
 from cv.core.world_data import WorldContext

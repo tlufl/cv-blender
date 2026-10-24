@@ -1,10 +1,11 @@
+from dataclasses import dataclass, field
+from enum import Enum
+
+import numpy as np
+
 from cv.core.frame_data import FrameMetaData
 from cv.core.math import rectangular_assignment
 from cv.processing.stereopairs_comporator import CompareResult
-
-import numpy as np
-from dataclasses import dataclass, field
-from enum import Enum
 
 
 def convert_to_corner_coords(bboxes: np.ndarray) -> np.ndarray:
@@ -79,7 +80,7 @@ class Track:
         left_bboxes: np.ndarray,
         right_bboxes: np.ndarray,
         cmp_result: CompareResult,
-    ) -> Track:
+    ) -> "Track":
         num_matches: int = cmp_result.matched_left.size
         num_unmatched_left: int = cmp_result.unmatched_left.size
         num_unmatched_right: int = cmp_result.unmatched_right.size
@@ -153,8 +154,11 @@ class TrackResult:
 
 
 class TimeTrackingNode:
-    def __init__(self, method: TrackMethod = TrackMethod.GLOBAL) -> None:
+    def __init__(
+        self, min_iou: float, method: TrackMethod = TrackMethod.GLOBAL
+    ) -> None:
         self.method = method
+        self.min_iou = min_iou
 
         self._next_id: int = 0
         self._tracks_history: TracksHistory = TracksHistory()
@@ -180,7 +184,7 @@ class TimeTrackingNode:
         curr_idx = []
 
         for track_ind, curr_ind in zip(track_indices, curr_indices):
-            if iou_matrix[track_ind, curr_ind] > 0.9:
+            if iou_matrix[track_ind, curr_ind] > (1 - self.min_iou):
                 break
             if track_ind not in used_track and curr_ind not in used_curr:
                 used_track.add(track_ind)

@@ -1,15 +1,16 @@
-from cv.core.frame_data import FrameMetaData
-from cv.core.math import rectangular_assignment
-
-import numpy as np
 from dataclasses import dataclass, field
 from enum import Enum
+
+import numpy as np
+
+from cv.core.frame_data import FrameMetaData
+from cv.core.math import INF, rectangular_assignment
 
 
 def create_distance_matrix(
     left_centers: np.ndarray,
     right_centers: np.ndarray,
-    threshold: float = 1e-2,
+    threshold: float,
 ) -> np.ndarray:
     matrix = np.sqrt(
         np.sum((left_centers[:, np.newaxis, :] - right_centers) ** 2, axis=-1)
@@ -22,7 +23,7 @@ def create_distance_matrix(
 
     valid_mask = x_filter & y_filter
 
-    matrix[~valid_mask] = 1e5
+    matrix[~valid_mask] = INF
 
     return matrix
 
@@ -41,12 +42,19 @@ class CompareResult:
 
 
 class StereoPairComparator:
-    def __init__(self, method: CompareMethod = CompareMethod.GLOBAL) -> None:
+    def __init__(
+        self,
+        max_distance: float,
+        epipolar_threshold: float,
+        method: CompareMethod = CompareMethod.GLOBAL,
+    ) -> None:
         self.method: CompareMethod = method
+        self.max_distance = max_distance
+        self.epipolar_threshold = epipolar_threshold
 
     def _global_compare(self, matrix: np.ndarray) -> CompareResult:
         left_idx, right_idx, unmatched_left, unmatched_right = rectangular_assignment(
-            matrix, 0.8
+            matrix, self.max_distance
         )
         return CompareResult(left_idx, right_idx, unmatched_left, unmatched_right)
 
@@ -59,7 +67,7 @@ class StereoPairComparator:
         right_idx = []
 
         for right_ind, left_ind in zip(right_indices, left_indices):
-            if matrix[right_ind, left_ind] > 1:
+            if matrix[right_ind, left_ind] > self.max_distance:
                 break
             if right_ind not in used_right and left_ind not in used_left:
                 used_right.add(left_ind)
@@ -90,7 +98,9 @@ class StereoPairComparator:
         left_centers = metadata1.bboxes[:, :2]
         right_centers = metadata2.bboxes[:, :2]
 
-        matrix = create_distance_matrix(left_centers, right_centers)
+        matrix = create_distance_matrix(
+            left_centers, right_centers, self.epipolar_threshold
+        )
         return (
             metadata1,
             metadata2,

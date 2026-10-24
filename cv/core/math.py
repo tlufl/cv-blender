@@ -1,11 +1,15 @@
-from scipy.optimize import linear_sum_assignment
+from typing import Final
+
 import numpy as np
+from scipy.optimize import linear_sum_assignment
+
+INF: Final[float] = 1e5
 
 
 def rectangular_assignment(
     matrix: np.ndarray, max_threshold: float = 1
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    matrix[matrix > max_threshold] = 1e5
+    matrix[matrix > max_threshold] = INF
     row_indices, col_indices = linear_sum_assignment(matrix)
 
     all_rows = np.arange(matrix.shape[0])

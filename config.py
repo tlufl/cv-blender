@@ -27,6 +27,17 @@ class VideoConfig:
         self.fps = int(video_data.get("fps", 25))
 
 
+class StereoCompareConfig:
+    def __init__(self, stereo_cmp_data: dict[str, str]):
+        self.max_distance = float(stereo_cmp_data["max_distance"])
+        self.epipolar_threshold = float(stereo_cmp_data["epipolar_threshold"])
+
+
+class TimeTrackingConfig:
+    def __init__(self, time_tracking_data: dict[str, str]) -> None:
+        self.min_iou = float(time_tracking_data["min_iou"])
+
+
 class ProjectConfig:
     def __init__(self, yaml_path: str):
         with open(yaml_path, "r") as file:
@@ -37,6 +48,12 @@ class ProjectConfig:
 
         video_data = self._yaml_data.get("video", {})
         self.video = VideoConfig(video_data)
+
+        stereo_cmp_data = self._yaml_data["stereo_compare"]
+        self.stereo_compare = StereoCompareConfig(stereo_cmp_data)
+
+        time_tracing_data = self._yaml_data["time_tracking"]
+        self.time_tracking = TimeTrackingConfig(time_tracing_data)
 
         self.path = EnvConfig()
 

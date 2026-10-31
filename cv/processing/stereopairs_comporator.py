@@ -5,6 +5,7 @@ import numpy as np
 
 from cv.core.frame_data import FrameMetaData
 from cv.core.math import INF, rectangular_assignment
+from cv.core.logging import logg
 
 
 def create_distance_matrix(
@@ -52,34 +53,36 @@ class StereoPairComparator:
         self.max_distance = max_distance
         self.epipolar_threshold = epipolar_threshold
 
+    @logg()
     def _global_compare(self, matrix: np.ndarray) -> CompareResult:
         left_idx, right_idx, unmatched_left, unmatched_right = rectangular_assignment(
             matrix, self.max_distance
         )
         return CompareResult(left_idx, right_idx, unmatched_left, unmatched_right)
 
+    @logg()
     def _greedy_compare(self, matrix: np.ndarray) -> CompareResult:
         flat_indices = np.argsort(matrix.flatten())
-        right_indices, left_indices = np.unravel_index(flat_indices, matrix.shape)
+        left_indices, right_indices = np.unravel_index(flat_indices, matrix.shape)
         used_right = set()
         used_left = set()
         left_idx = []
         right_idx = []
 
-        for right_ind, left_ind in zip(right_indices, left_indices):
-            if matrix[right_ind, left_ind] > self.max_distance:
+        for left_ind, right_ind in zip(left_indices, right_indices):
+            if matrix[left_ind, right_ind] >= self.max_distance:
                 break
             if right_ind not in used_right and left_ind not in used_left:
-                used_right.add(left_ind)
-                used_left.add(right_ind)
+                used_left.add(left_ind)
+                used_right.add(right_ind)
                 left_idx.append(left_ind)
                 right_idx.append(right_ind)
 
         left_idx = np.array(left_idx)
         right_idx = np.array(right_idx)
 
-        all_left = np.arange(matrix.shape[1])
-        all_right = np.arange(matrix.shape[0])
+        all_left = np.arange(matrix.shape[0])
+        all_right = np.arange(matrix.shape[1])
         unmatched_left = np.setdiff1d(all_left, left_idx)
         unmatched_right = np.setdiff1d(all_right, right_idx)
 

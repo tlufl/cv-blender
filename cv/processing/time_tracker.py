@@ -174,6 +174,10 @@ class TimeTrackingNode:
         iou_matrix = (iou_left + iou_right) / 2
         return iou_matrix
 
+    def _global_tracking(self, iou_matrix: np.ndarray) -> TrackResult:
+        tid, cid, lost, new = rectangular_assignment(iou_matrix)
+        return TrackResult(cid, tid, new, lost)
+
     def _greedy_tracking(self, iou_matrix: np.ndarray) -> TrackResult:
         flat_indices = np.argsort(iou_matrix.flatten())
         track_indices, curr_indices = np.unravel_index(flat_indices, iou_matrix.shape)
@@ -205,11 +209,9 @@ class TimeTrackingNode:
 
     def _assign_ids(
         self,
-        metadata1: FrameMetaData,
-        metadata2: FrameMetaData,
         track: Track,
         track_result: TrackResult,
-    ) -> tuple[FrameMetaData, FrameMetaData, np.ndarray]:
+    ) -> np.ndarray:
         assign_idx = np.zeros(shape=track.total_detections, dtype=np.int32)
         assign_idx[track_result.matched_curr_idx] = self._tracks_history.track_ids[
             track_result.matched_track_idx
@@ -222,20 +224,11 @@ class TimeTrackingNode:
             assign_idx[track_result.new_idx] = new_ids
             self._next_id += track_result.new_idx.size
 
-        metadata1.bboxes = track.left_bboxes[track.left_mask]
-        metadata1.object_ids = assign_idx[track.left_mask]
-        metadata2.bboxes = track.right_bboxes[track.right_mask]
-        metadata2.object_ids = assign_idx[track.right_mask]
-
-        return metadata1, metadata2, assign_idx
+        return assign_idx
 
     def _update_history(self, track: Track, track_ids: np.ndarray) -> None:
         self._tracks_history.track = track
         self._tracks_history.track_ids = track_ids
-
-    def _global_tracking(self, iou_matrix: np.ndarray) -> TrackResult:
-        tid, cid, lost, new = rectangular_assignment(iou_matrix)
-        return TrackResult(cid, tid, new, lost)
 
     def _track(self, iou_matrix: np.ndarray) -> TrackResult:
         match self.method:
@@ -243,6 +236,20 @@ class TimeTrackingNode:
                 return self._global_tracking(iou_matrix)
             case TrackMethod.GREEDY:
                 return self._greedy_tracking(iou_matrix)
+
+    def _update_metadata(
+        self,
+        metadata1: FrameMetaData,
+        metadata2: FrameMetaData,
+        track: Track,
+        track_ids: np.ndarray,
+    ) -> tuple[FrameMetaData, FrameMetaData]:
+        metadata1.bboxes = track.left_bboxes[: track.num_matches]
+        metadata2.bboxes = track.right_bboxes[: track.num_matches]
+        metadata1.object_ids = track_ids[: track.num_matches]
+        metadata2.object_ids = track_ids[: track.num_matches]
+
+        return metadata1, metadata2
 
     def process(
         self,
@@ -254,9 +261,6 @@ class TimeTrackingNode:
 
         iou_matrix = self._create_iou_matrix(track)
         track_result = self._track(iou_matrix)
-        metadata1, metadata2, track_ids = self._assign_ids(
-            metadata1, metadata2, track, track_result
-        )
+        track_ids = self._assign_ids(track, track_result)
         self._update_history(track, track_ids)
-
-        return metadata1, metadata2
+        return self._update_metadata(metadata1, metadata2, track, track_ids)

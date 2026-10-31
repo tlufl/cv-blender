@@ -3,7 +3,7 @@ from typing import Final
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
-INF: Final[float] = 1e5
+INF: Final[float] = 1e10
 
 
 def rectangular_assignment(

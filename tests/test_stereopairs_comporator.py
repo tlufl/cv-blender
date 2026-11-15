@@ -1,8 +1,7 @@
 import numpy as np
 
-from cv.core.math import INF
+from cv.core.math import INF, create_distance_matrix
 from cv.processing.stereopairs_comporator import epipolar_filter
-from cv.core.math import create_distance_matrix
 
 
 def test_create_distance_matrix():

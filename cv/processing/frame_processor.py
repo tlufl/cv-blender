@@ -12,6 +12,8 @@ from cv.core.logging import log
 
 type ProcessFrameFn = Callable[[FrameContext], FrameMetaData]
 
+from cv.core.frame_data import DetectionBBox
+
 
 @dataclass
 class ProcessFramesNode:
@@ -45,8 +47,7 @@ def detect_by_color(color_ranges: list[ColorRange]) -> ProcessFrameFn:
         if not contours:
             return context.metadata
 
-        bboxes = []
-        ids = []
+        detections = []
         frame_h, frame_w = context.original.shape[:2]
         normalization_factor = np.array(
             [frame_w, frame_h, frame_w, frame_h], dtype=np.float32
@@ -54,16 +55,14 @@ def detect_by_color(color_ranges: list[ColorRange]) -> ProcessFrameFn:
 
         for id, contour in enumerate(contours):
             x, y, w, h = cv2.boundingRect(contour)
-            new_bbox = np.array([x + w / 2, y + h / 2, w, h], dtype=np.float32)
-            bboxes.append(new_bbox)
-            ids.append(id)
+            new_bbox = [x + w / 2, y + h / 2, w, h]
+            detections.append((id, new_bbox))
 
-        bboxes_array = np.array(bboxes, dtype=np.float32) / normalization_factor
-        ids_array = np.array(ids, dtype=np.int64)
+        detections = np.array(detections, dtype=DetectionBBox)
+        detections["data"] /= normalization_factor
 
-        context.metadata.bboxes = np.vstack((context.metadata.bboxes, bboxes_array))
-        context.metadata.object_ids = np.hstack(
-            (context.metadata.object_ids, ids_array)
+        context.metadata.detections = np.concat(
+            (context.metadata.detections, detections)
         )
         return context.metadata
 
@@ -96,12 +95,14 @@ def detect_by_yolo(
             return context.metadata
 
         bboxes_array: np.ndarray = cast(np.ndarray, result.boxes.xywhn)
-
         ids_array = np.arange(len(bboxes_array), dtype=np.int64)
 
-        context.metadata.bboxes = np.vstack((context.metadata.bboxes, bboxes_array))
-        context.metadata.object_ids = np.hstack(
-            (context.metadata.object_ids, ids_array)
+        detections = np.empty(len(bboxes_array), dtype=DetectionBBox)
+        detections["data"] = bboxes_array
+        detections["id"] = ids_array
+
+        context.metadata.detections = np.concat(
+            (context.metadata.detections, detections)
         )
 
         return context.metadata

@@ -21,15 +21,15 @@ def test_basic():
 
     res = process_frame(context)
 
-    assert len(res.bboxes) > 0
+    assert len(res.detections) > 0
 
-    cost_matrix = create_cost_matrix(expected, res.bboxes)
+    cost_matrix = create_cost_matrix(expected, res.detections["data"])
     exp_ids, res_ids = linear_sum_assignment(cost_matrix)
 
     expected = expected[exp_ids]
-    res.bboxes = res.bboxes[res_ids]
+    res.detections = res.detections[res_ids]
 
-    np.testing.assert_allclose(expected, res.bboxes, atol=0.05)
+    np.testing.assert_allclose(expected, res.detections["data"], atol=0.05)
 
 
 def test_two_planes():
@@ -42,15 +42,15 @@ def test_two_planes():
 
     res = process_frame(context)
 
-    assert len(res.bboxes) > 0
+    assert len(res.detections) > 0
 
-    cost_matrix = create_cost_matrix(expected, res.bboxes)
+    cost_matrix = create_cost_matrix(expected, res.detections["data"])
     exp_ids, res_ids = linear_sum_assignment(cost_matrix)
 
     expected = expected[exp_ids]
-    res.bboxes = res.bboxes[res_ids]
+    res.detections = res.detections[res_ids]
 
-    np.testing.assert_allclose(expected, res.bboxes, atol=0.05)
+    np.testing.assert_allclose(expected, res.detections["data"], atol=0.05)
 
 
 def test_no_planes():
@@ -60,7 +60,7 @@ def test_no_planes():
 
     res = process_frame(context)
 
-    assert len(res.bboxes) == 0
+    assert len(res.detections) == 0
 
 
 def test_plane_at_edge():
@@ -70,12 +70,14 @@ def test_plane_at_edge():
 
     res = process_frame(context)
 
-    assert len(res.bboxes) == len(expected)
+    assert len(res.detections) == len(expected)
 
-    cost_matrix = create_cost_matrix(expected, res.bboxes)
+    cost_matrix = create_cost_matrix(expected, res.detections["data"])
     exp_ids, res_ids = linear_sum_assignment(cost_matrix)
 
-    np.testing.assert_allclose(expected[exp_ids], res.bboxes[res_ids], atol=0.06)
+    np.testing.assert_allclose(
+        expected[exp_ids], res.detections[res_ids]["data"], atol=0.06
+    )
 
 
 def test_large_plane():
@@ -85,12 +87,14 @@ def test_large_plane():
 
     res = process_frame(context)
 
-    assert len(res.bboxes) == len(expected)
+    assert len(res.detections) == len(expected)
 
-    cost_matrix = create_cost_matrix(expected, res.bboxes)
+    cost_matrix = create_cost_matrix(expected, res.detections["data"])
     exp_ids, res_ids = linear_sum_assignment(cost_matrix)
 
-    np.testing.assert_allclose(expected[exp_ids], res.bboxes[res_ids], atol=0.05)
+    np.testing.assert_allclose(
+        expected[exp_ids], res.detections[res_ids]["data"], atol=0.05
+    )
 
 
 def test_multiple_identical_planes_row():
@@ -103,9 +107,11 @@ def test_multiple_identical_planes_row():
 
     res = process_frame(context)
 
-    assert len(res.bboxes) > 0
+    assert len(res.detections) > 0
 
-    cost_matrix = create_cost_matrix(expected, res.bboxes)
+    cost_matrix = create_cost_matrix(expected, res.detections["data"])
     exp_ids, res_ids = linear_sum_assignment(cost_matrix)
 
-    np.testing.assert_allclose(expected[exp_ids], res.bboxes[res_ids], atol=0.06)
+    np.testing.assert_allclose(
+        expected[exp_ids], res.detections[res_ids]["data"], atol=0.06
+    )

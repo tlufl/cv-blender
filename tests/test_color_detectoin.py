@@ -22,9 +22,7 @@ def test_basic_mask_detection():
     img[yl:yr, xl:xr] = np.array([255, 255, 255], dtype=np.uint8)
 
     metadata = process_frame(FrameContext(image=img, frame_id=0))
-    np.testing.assert_allclose(bbox, metadata.bboxes[0])
-
-    metadata.bboxes[0]
+    np.testing.assert_allclose(bbox, metadata.detections["data"][0])
 
 
 def test_no_objects_detected():
@@ -32,7 +30,7 @@ def test_no_objects_detected():
 
     metadata = process_frame(FrameContext(image=img, frame_id=0))
 
-    assert len(metadata.bboxes) == 0
+    assert len(metadata.detections["data"]) == 0
 
 
 def test_multiple_objects_detection():
@@ -49,9 +47,9 @@ def test_multiple_objects_detection():
 
     metadata = process_frame(FrameContext(image=img, frame_id=1))
 
-    assert len(metadata.bboxes) == 2
+    assert len(metadata.detections["data"]) == 2
 
-    detected_bboxes = sorted(metadata.bboxes, key=lambda x: x[0])
+    detected_bboxes = sorted(metadata.detections["data"], key=lambda x: x[0])
 
     np.testing.assert_allclose(bbox1, detected_bboxes[0], atol=1e-2)
     np.testing.assert_allclose(bbox2, detected_bboxes[1], atol=1e-2)
@@ -70,8 +68,8 @@ def test_object_on_the_image_edge():
 
     metadata = process_frame(FrameContext(image=img, frame_id=2))
 
-    assert len(metadata.bboxes) > 0
-    np.testing.assert_allclose(bbox, metadata.bboxes[0], atol=2e-2)
+    assert len(metadata.detections["data"]) > 0
+    np.testing.assert_allclose(bbox, metadata.detections["data"][0], atol=2e-2)
 
 
 def test_blurred_mask_detection():
@@ -85,5 +83,5 @@ def test_blurred_mask_detection():
 
     metadata = process_frame(FrameContext(image=img, frame_id=3))
 
-    assert len(metadata.bboxes) == 1
-    np.testing.assert_allclose(bbox, metadata.bboxes[0], atol=1e-2)
+    assert len(metadata.detections["data"]) == 1
+    np.testing.assert_allclose(bbox, metadata.detections["data"][0], atol=1e-2)

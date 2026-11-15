@@ -20,8 +20,8 @@ class TriangulateNode:
         world_ctx = WorldContext(
             frame_id=metadata1.frame_id, frame_res=metadata1.frame_res
         )
-        bboxes_l = metadata1.bboxes
-        bboxes_r = metadata2.bboxes
+        bboxes_l = metadata1.detections["data"]
+        bboxes_r = metadata2.detections["data"]
 
         if not bboxes_l.size or not bboxes_r.size:
             return world_ctx
@@ -43,8 +43,8 @@ class TriangulateNode:
         x_coords = (center_x_l - c_x) * z_coords / f_px
         y_coords = (center_y_l - c_y) * z_coords / f_px
 
-        world_ctx.positions = np.column_stack((x_coords, y_coords, z_coords))
+        world_ctx.detections["data"] = np.column_stack((x_coords, y_coords, z_coords))
 
-        world_ctx.object_ids = metadata1.object_ids.copy()
+        world_ctx.detections["id"] = metadata1.detections["id"].copy()
 
         return world_ctx

@@ -5,7 +5,7 @@ import numpy as np
 
 from cv.core.frame_data import FrameMetaData
 from cv.core.logging import ArgsType, KwargsType, log
-from cv.core.math import INF, rectangular_assignment, create_distance_matrix
+from cv.core.math import INF, create_distance_matrix, rectangular_assignment
 
 
 def epipolar_filter(
@@ -111,8 +111,8 @@ class StereoPairComparator:
     def process(
         self, metadata1: FrameMetaData, metadata2: FrameMetaData
     ) -> tuple[FrameMetaData, FrameMetaData, CompareResult]:
-        left_centers = metadata1.bboxes[:, :2]
-        right_centers = metadata2.bboxes[:, :2]
+        left_centers = metadata1.detections["data"][:, :2]
+        right_centers = metadata2.detections["data"][:, :2]
 
         matrix = create_distance_matrix(left_centers, right_centers)
         matrix = epipolar_filter(

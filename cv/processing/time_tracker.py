@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Self
+from typing import Protocol, Self
 
 import numpy as np
 
@@ -10,25 +10,35 @@ from cv.core.math import (
     create_distance_matrix,
     rectangular_assignment,
 )
-from cv.core.world_data import WorldContext
+
+
+class HasDetections(Protocol):
+    detections: np.ndarray
+
+
+def make_track_dtype(ndim) -> np.dtype:
+    return np.dtype(
+        [
+            ("age", "i4"),
+            ("id", "i4"),
+            ("data", "f8", (ndim,)),
+            ("last_data", "f8", (ndim,)),
+            ("velocity", "f8", (ndim,)),
+        ]
+    )
+
+
+Track2D = make_track_dtype(4)
+Track3D = make_track_dtype(3)
 
 # ----- 3D Tracking -----
 
-Track = np.dtype(
-    [
-        ("age", "i4"),
-        ("id", "i4"),
-        ("position", "f8", (3,)),
-        ("last_pos", "f8", (3,)),
-        ("velocity", "f8", (3,)),
-    ]
-)
 
 type PredictFn = Callable[[np.ndarray], np.ndarray]
 
 
 def linear_predict(tracks: np.ndarray) -> np.ndarray:
-    tracks["position"] += tracks["velocity"]
+    tracks["data"] += tracks["velocity"]
     return tracks
 
 
@@ -49,12 +59,14 @@ class MatchResult:
 
 @dataclass
 class TrackHistory:
+    track_dtype: np.dtype
     max_age: int = 0
     _predict: PredictFn | None = None
-    _history: np.ndarray = field(
-        default_factory=lambda: np.empty(shape=(0,), dtype=Track)
-    )
+    _history: np.ndarray = field(init=False)
     _next_id: int = 1
+
+    def __post_init__(self) -> None:
+        self._history = np.empty((0,), dtype=self.track_dtype)
 
     def get_new_ids(self, count: int) -> np.ndarray:
         ids = np.arange(self._next_id, self._next_id + count, dtype="i4")
@@ -67,14 +79,14 @@ class TrackHistory:
         self._history["age"] += 1
 
         if len(match_result.curr_idx) > 0:
-            new_pos = update_tracks["position"][match_result.curr_idx]
-            old_pos = self._history["last_pos"][match_result.track_idx]
+            new_data = update_tracks["data"][match_result.curr_idx]
+            old_data = self._history["last_data"][match_result.track_idx]
 
             self._history["velocity"][match_result.track_idx] = (
-                new_pos - old_pos
+                new_data - old_data
             ) / self._history["age"][match_result.track_idx][:, np.newaxis]
-            self._history["position"][match_result.track_idx] = new_pos
-            self._history["last_pos"][match_result.track_idx] = new_pos
+            self._history["data"][match_result.track_idx] = new_data
+            self._history["last_data"][match_result.track_idx] = new_data
             self._history["age"][match_result.track_idx] = 0
 
         new_tracks = update_tracks[match_result.unmatched_curr_idx]
@@ -88,14 +100,13 @@ class TrackHistory:
         if self._predict is not None and len(self._history) > 0:
             self._history = self._predict(self._history)
 
-    def update(self, world_context: WorldContext, match_result: MatchResult) -> None:
-        num_update_tracks = len(world_context.positions)
-        update_tracks = np.zeros(num_update_tracks, dtype=Track)
+    def update(self, context: HasDetections, match_result: MatchResult) -> None:
+        num_update_tracks = len(context.detections)
+        update_tracks = np.zeros(num_update_tracks, dtype=self.track_dtype)
 
         if num_update_tracks > 0:
-            update_tracks["id"] = world_context.object_ids
-            update_tracks["position"] = world_context.positions
-            update_tracks["last_pos"] = world_context.positions
+            update_tracks[["id", "data"]] = context.detections[["id", "data"]]
+            update_tracks["last_data"] = context.detections["data"]
 
         self._update_history(update_tracks, match_result)
         self._delete_old_tracks()
@@ -106,13 +117,13 @@ class TrackHistory:
 
     @property
     def previous_positions(self) -> np.ndarray:
-        return self._history["position"]
+        return self._history["data"]
 
 
 type MatchFn = Callable[[np.ndarray, float], MatchResult]
 
 
-def global_matching(matrix: np.ndarray, max_val: float) -> MatchResult:
+def global_distance_matching(matrix: np.ndarray, max_val: float) -> MatchResult:
     num_curr = matrix.shape[1]
     if matrix.size == 0:
         return MatchResult.empty(num_curr)
@@ -128,24 +139,25 @@ def global_matching(matrix: np.ndarray, max_val: float) -> MatchResult:
     return MatchResult(matched_track_ind, matched_curr_ind, unmatched_curr_ind)
 
 
-class WorldTrackingNode:
+class WorldTrackingNode[ContextT: HasDetections]:
     def __init__(
         self,
+        track_dtype: np.dtype,
         match_fn: MatchFn,
         max_age: int = 0,
         predict_fn: PredictFn | None = None,
         max_distance: float = 1.0,
     ) -> None:
         self._match = match_fn
-        self._history = TrackHistory(max_age, predict_fn)
+        self._history = TrackHistory(track_dtype, max_age, predict_fn)
         self.max_distance = max_distance
 
     def _assign_ids(
         self,
         match_result: MatchResult,
-        world_context: WorldContext,
-    ) -> WorldContext:
-        num_objects = len(world_context.positions)
+        context: ContextT,
+    ) -> ContextT:
+        num_objects = len(context.detections)
         assigned_ids = np.full(num_objects, -1, dtype="i4")
 
         if len(match_result.curr_idx) > 0:
@@ -159,21 +171,21 @@ class WorldTrackingNode:
                 num_new
             )
 
-        world_context.object_ids = assigned_ids
-        return world_context
+        context.detections["id"] = assigned_ids
+        return context
 
     @log(title="3D tracking")
-    def process(self, world_context: WorldContext) -> WorldContext:
+    def process(self, context: ContextT) -> ContextT:
         self._history.predict()
 
         distances = create_distance_matrix(
-            self._history.previous_positions, world_context.positions
+            self._history.previous_positions, context.detections["data"]
         )
         match_result = self._match(distances, self.max_distance)
-        world_context = self._assign_ids(match_result, world_context)
+        context = self._assign_ids(match_result, context)
 
-        self._history.update(world_context, match_result)
-        return world_context
+        self._history.update(context, match_result)
+        return context
 
 
 from cv.core.frame_data import FrameMetaData
@@ -184,8 +196,6 @@ class TmpNode:
     def process(
         self, metadata1: FrameMetaData, metadata2: FrameMetaData, cmp_res: CompareResult
     ) -> tuple[FrameMetaData, FrameMetaData]:
-        metadata1.bboxes = metadata1.bboxes[cmp_res.matched_left]
-        metadata2.bboxes = metadata2.bboxes[cmp_res.matched_right]
-        metadata1.object_ids = metadata1.object_ids[cmp_res.matched_left]
-        metadata2.object_ids = metadata2.object_ids[cmp_res.matched_right]
+        metadata1.detections = metadata1.detections[cmp_res.matched_left]
+        metadata2.detections = metadata2.detections[cmp_res.matched_right]
         return metadata1, metadata2

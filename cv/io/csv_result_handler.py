@@ -20,11 +20,11 @@ class CSVResultHandlerNode:
         if self._writer is None:
             raise RuntimeError()
 
-        if world_context.positions.size == 0:
+        if world_context.detections.size == 0:
             return
 
         frame_id = world_context.frame_id
-        for obj_id, position in zip(world_context.object_ids, world_context.positions):
+        for obj_id, position in world_context.detections:
             x, y, z = position
             row = [
                 frame_id,

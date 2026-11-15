@@ -2,16 +2,15 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+DetectionBBox = np.dtype([("id", "i4"), ("data", "f8", (4,))])
+
 
 @dataclass
 class FrameMetaData:
     frame_id: int
     frame_res: tuple[int, int]
-    bboxes: np.ndarray = field(
-        default_factory=lambda: np.empty(shape=(0, 4), dtype=np.float32)
-    )
-    object_ids: np.ndarray = field(
-        default_factory=lambda: np.empty(shape=(0,), dtype=np.int32)
+    detections: np.ndarray = field(
+        default_factory=lambda: np.zeros(shape=(0,), dtype=DetectionBBox)
     )
 
 

@@ -1,11 +1,12 @@
 import numpy as np
 import pytest
 
+from cv.core.math import create_distance_matrix
 from cv.core.world_data import Detection3D, WorldContext
 from cv.processing.time_tracker import (
     Track3D,
-    WorldTrackingNode,
-    global_distance_matching,
+    TrackingNode,
+    global_matching,
     linear_predict,
 )
 
@@ -23,12 +24,13 @@ resolution = (0, 0)
 
 @pytest.fixture
 def tracker():
-    return WorldTrackingNode(
+    return TrackingNode(
         Track3D,
-        global_distance_matching,
+        metric_fn=create_distance_matrix,
+        match_fn=global_matching,
         max_age=3,
         predict_fn=linear_predict,
-        max_distance=5,
+        max_metric_value=5,
     )
 
 

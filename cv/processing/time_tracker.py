@@ -4,34 +4,14 @@ from typing import Protocol, Self
 
 import numpy as np
 
+from cv.core.frame_data import FrameMetaData
 from cv.core.logging import log
-from cv.core.math import (
-    INF,
-    create_distance_matrix,
-    rectangular_assignment,
-)
+from cv.core.math import INF, create_iou_matrix, rectangular_assignment
+from cv.processing.stereopairs_comporator import CompareResult
 
 
 class HasDetections(Protocol):
     detections: np.ndarray
-
-
-def make_track_dtype(ndim) -> np.dtype:
-    return np.dtype(
-        [
-            ("age", "i4"),
-            ("id", "i4"),
-            ("data", "f8", (ndim,)),
-            ("last_data", "f8", (ndim,)),
-            ("velocity", "f8", (ndim,)),
-        ]
-    )
-
-
-Track2D = make_track_dtype(4)
-Track3D = make_track_dtype(3)
-
-# ----- 3D Tracking -----
 
 
 type PredictFn = Callable[[np.ndarray], np.ndarray]
@@ -91,7 +71,7 @@ class TrackHistory:
 
         new_tracks = update_tracks[match_result.unmatched_curr_idx]
         if len(new_tracks) > 0:
-            self._history = np.concatenate((self._history, new_tracks))
+            self._history = np.concat((self._history, new_tracks))
 
     def _delete_old_tracks(self) -> None:
         self._history = self._history[self._history["age"] <= self.max_age]
@@ -122,8 +102,10 @@ class TrackHistory:
 
 type MatchFn = Callable[[np.ndarray, float], MatchResult]
 
+type MetricFn = Callable[[np.ndarray, np.ndarray], np.ndarray]
 
-def global_distance_matching(matrix: np.ndarray, max_val: float) -> MatchResult:
+
+def global_matching(matrix: np.ndarray, max_val: float) -> MatchResult:
     num_curr = matrix.shape[1]
     if matrix.size == 0:
         return MatchResult.empty(num_curr)
@@ -139,18 +121,20 @@ def global_distance_matching(matrix: np.ndarray, max_val: float) -> MatchResult:
     return MatchResult(matched_track_ind, matched_curr_ind, unmatched_curr_ind)
 
 
-class WorldTrackingNode[ContextT: HasDetections]:
+class TrackingNode[ContextT: HasDetections]:
     def __init__(
         self,
         track_dtype: np.dtype,
+        metric_fn: MetricFn,
         match_fn: MatchFn,
         max_age: int = 0,
         predict_fn: PredictFn | None = None,
-        max_distance: float = 1.0,
+        max_metric_value: float = 1.0,
     ) -> None:
+        self._get_metric = metric_fn
         self._match = match_fn
         self._history = TrackHistory(track_dtype, max_age, predict_fn)
-        self.max_distance = max_distance
+        self.max_distance = max_metric_value
 
     def _assign_ids(
         self,
@@ -178,18 +162,14 @@ class WorldTrackingNode[ContextT: HasDetections]:
     def process(self, context: ContextT) -> ContextT:
         self._history.predict()
 
-        distances = create_distance_matrix(
+        metric = self._get_metric(
             self._history.previous_positions, context.detections["data"]
         )
-        match_result = self._match(distances, self.max_distance)
+        match_result = self._match(metric, self.max_distance)
         context = self._assign_ids(match_result, context)
 
         self._history.update(context, match_result)
         return context
-
-
-from cv.core.frame_data import FrameMetaData
-from cv.processing.stereopairs_comporator import CompareResult
 
 
 class TmpNode:
@@ -199,3 +179,29 @@ class TmpNode:
         metadata1.detections = metadata1.detections[cmp_res.matched_left]
         metadata2.detections = metadata2.detections[cmp_res.matched_right]
         return metadata1, metadata2
+
+
+def make_track_dtype(ndim) -> np.dtype:
+    return np.dtype(
+        [
+            ("age", "i4"),
+            ("id", "i4"),
+            ("data", "f8", (ndim,)),
+            ("last_data", "f8", (ndim,)),
+            ("velocity", "f8", (ndim,)),
+        ]
+    )
+
+
+# ----- 2D Tracking -----
+
+Track2D = make_track_dtype(4)
+
+
+def create_iou_metric_matrix(pos1: np.ndarray, pos2: np.ndarray) -> np.ndarray:
+    return 1 - create_iou_matrix(pos1, pos2)
+
+
+# ----- 3D Tracking -----
+
+Track3D = make_track_dtype(3)

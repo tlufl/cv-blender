@@ -66,11 +66,10 @@ def create_iou_matrix(pos1: np.ndarray, pos2: np.ndarray) -> np.ndarray:
         intersection_area,
         union_area,
         out=np.zeros_like(union_area),
-        where=union_area > 0,
+        where=union_area >= 0,
     )
 
-    iou = 1 - iou
-    iou[np.isnan(iou)] = 1
+    iou[np.isnan(iou)] = 0
 
     return iou
 
